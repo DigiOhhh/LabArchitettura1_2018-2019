@@ -1,0 +1,250 @@
+\documentclass[11pt]{article}
+\usepackage[italian]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{color}
+\usepackage{float}
+\usepackage{geometry}
+\geometry{a4paper}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage[italian]{babel, varioref}
+
+\pdfinfo{
+   /Author (Alessandro Di Gioacchino)
+   /Title  (Relazione del Progetto di Laboratorio - Architettura I - Turno A)
+}
+
+\title{Relazione del Progetto di Laboratorio \\ Architettura degli Elaboratori I}
+
+\author{Alessandro Di Gioacchino\thanks{Progetto approvato il 03/09/19, consegnato il 11/09/19}\\ Matricola: 931271, Turno: A\\ \url{alessandro.digioacchino@studenti.unimi.it}}
+
+\date{}
+
+
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+
+
+\section*{Introduzione}
+
+In questo progetto è proposta una possibile implementazione del gioco da me battezzato {\itshape Spegni le luci}.
+
+Dopo aver iniziato una partita, alcuni dei nove LED presenti si illumineranno: scopo del giocatore è di spegnerli tutti mediante la pressione degli appositi tasti, prestando attenzione al fatto che questi non controllano unicamente la luce corrispondente ma anche quelle adiacenti ad essa.
+
+Per la realizzazione del circuito sono stati usati diversi componenti di libreria, tra cui elementi di memoria, quali latch e flip-flop, generatori di numeri casuali su più bit, contatori, display esadecimali, ma anche i classici operatori sono risultati fondamentali per implementare alcune importanti condizioni logiche.
+
+La relazione è strutturata come segue: in \underline{~\hyperref[sec:ilcircuitoprincipale]{Sez. 1}} presenterò una visione generale del circuito e tratterò in particolare due semplici componenti, ovvero il contatore, usato per il numero di mosse, e il cronometro. In \underline{~\hyperref[sec:icomponentifondamentali]{Sez. 2}} vedremo più da vicino le parti del circuito che fanno funzionare correttamente il gioco e i problemi affrontati per implementarle. In \underline{~\hyperref[sec:considerazionifinali]{Sez. 3}} trarrò infine le ultime conclusioni, e qualche idea per migliorare ulteriormente il progetto.
+
+
+
+\section{Il circuito principale}
+\label{sec:ilcircuitoprincipale}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\columnwidth]{Immagini/"Il circuito principale (1)"}
+\caption{{\small La schermata di gioco.}}
+\label{fig:ilcircuitoprincipale(1)}
+\end{figure}
+
+Il circuito principale è organizzato in modo da essere il più user-friendly possibile.
+
+Il sistema di input, tutto ciò con cui l'utente può interagire, è costituito da nove bottoni disposti in un quadrato di lato tre; sotto a questi vi sono due ulteriori tasti dal nome autoesplicativo: {\itshape On / off} serve per attivare o disattivare il gioco, mentre {\itshape Reset} va premuto in caso di errore o semplicemente per iniziare una nuova partita.
+
+A destra il sistema di output, che include nove LED disposti in maniera identica ai bottoni del sistema di input. Sono inoltre presenti due ulteriori LED: quello in basso, {\itshape Errore}, segnala all'utente un qualsiasi problema riscontrato durante la partita (che, come vedremo, potrà essere di un unico tipo), mentre quello posto tra le due scacchiere, {\itshape Vittoria}, si accende in caso di game over. In cima vi sono infine sette display esadecimali, in questa implementazione utilizzati come display decimali: il primo gruppo, composto da quattro elementi, misura il tempo impiegato per concludere la partita in minuti e secondi, mentre i restanti tre contano le mosse utilizzate.
+
+
+\subsection{Il contatore}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\columnwidth]{Immagini/"Contatore"}
+\caption{{\small Implementazione di un contatore asincrono su 12 bit.}}
+\label{fig:contatore}
+\end{figure}
+
+Il contatore riceve in input i segnali dei nove bottoni, in figura numerati da {\itshape In 1} a {\itshape In 9}, e il segnale di {\itshape Vittoria}. I nove AND tra questi due ingressi servono per disabilitare il contatore in caso di game over, in accordo con il seguente ragionamento:
+
+{\itshape if (!Vittoria AND (In 0 OR \dots OR In 9)) then increase counter}, implementato nel circuito sulla destra in figura grazie alla distributività dell'operatore AND.
+
+Il segnale uscente dall'OR, contrassegnato dal tunnel {\itshape i}, pilota poi il clock di tutti i Counter, rendendoli in questo modo asincroni. Inoltre {\itshape i} entra anche in {\itshape Count} del Counter che gestisce le unità, innescando il cambio di stato ad ogni interazione da parte dell'utente. Il riporto di questo contatore è poi connesso a quello che si occupa delle decine, così da ottenere un incremento del numero memorizzato quando le unità raggiungono la cifra massima (nove in questa implementazione).
+
+Il Counter che gestisce le centinaia ha bisogno di qualche attenzione in più.
+Se, come potrebbe essere intuitivo, vi collegassimo il riporto uscente dal contatore delle decine, non appena questo raggiunge la cifra massima le centinaia aumenterebbero in corrispondenza dell'input dell'utente: chiaramente il risultato desiderato è ben diverso. Perciò è necessario un AND all'ingresso {\itshape Count} tra il riporto del contatore delle unità e quello delle decine: così, il Counter incrementa il numero memorizzato solo quando gli altri due raggiungono la cifra di wrap around; in altri termini, le centinaia vengono incrementate quando gli altri due contatori sono a 99.
+
+L'ingresso {\itshape Clear} è infine connesso ad un OR tra il segnale di {\itshape Off} e quello di {\itshape Reset}, in modo da cancellare lo stato di ogni contatore quando il gioco viene spento o quando si comincia una nuova partita.
+
+
+\subsection{Il cronometro}
+\hfill
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\columnwidth]{Immagini/"Cronometro"}
+\caption{{\small Implementazione di un cronometro per misurare minuti e secondi.}}
+\label{fig:cronometro}
+\end{figure}
+
+Il cronometro riceve in input il segnale di {\itshape On / off}: quando è asserito e la partita ha quindi avuto inizio, il T Flip-Flop in alto a sinistra memorizza il bit ricevuto e lo propaga all'ingresso dei quattro Counter; questi sono disposti in coppie: quello a destra si occupa della cifra meno significativa, per cui il massimo valore memorizzato è 9, mentre quello a sinistra arriva a contare fino a 5.
+
+Il primo di essi, che memorizza le unità dei secondi, è pilotato da un AND tra il clock del circuito e il segnale negato di {\itshape Vittoria}: 
+
+{\itshape if (Clk = 1 AND !Vittoria) then increase counter}
+
+In questo modo il cronometro si ferma non appena l'utente riesce a concludere la partita, e continua a contare altrimenti.
+
+Il segnale di riporto di ciascun contatore è poi collegato in cascata all'ingresso {\itshape Clock} del successivo, ottenendo così un vero e proprio orologio digitale.
+
+Come accade per quello che si occupa del numero di mosse, anche ogni Counter di questo circuito è connesso ad un OR tra il segnale di {\itshape Off} e quello di {\itshape Reset}, in modo da impostare il cronometro a zero in maniera asincrona nel caso uno dei due venga asserito.
+
+
+
+\section{I componenti fondamentali}
+\label{sec:icomponentifondamentali}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\columnwidth]{Immagini/"Il circuito principale (2)"}
+\caption{{\small Tutto ciò che fa funzionare il circuito principale. Analizzeremo i moduli di questa immagine da sinistra verso destra nelle sottosezioni che seguono.}}
+\label{fig:ilcircuitoprincipale(2)}
+\end{figure}
+
+
+\subsection{Controllo input}
+
+Scopo del circuito in figura \underline{\vref{fig:controlloinput}} è quello di gestire l'input in maniera corretta, attivandolo solo in corrispondenza dell'inizio della partita. 
+
+Prende ovviamente in ingresso i segnali della scacchiera di gioco, come anche quello di {\itshape On / off}; in modo analogo all'implementazione del cronometro, un T Flip-Flop si occupa di memorizzare lo stato della partita. Il segnale uscente da questo elemento di memoria entra poi nella prima schiera di AND, di fatto attivando l'interazione dell'utente solo in seguito alla pressione del tasto di accensione.
+
+Un ulteriore ingresso, quello di {\itshape Vittoria}, entra nella seconda colonna di AND assieme all'uscita dei precedenti operatori. La logica di questa parte del circuito, ancora una volta corrispondente a quella del cronometro, permette di disattivare automaticamente l'input nel caso in cui l'utente riesca a concludere il gioco.
+
+Oltre a rielaborare l'input, {\itshape Controllo input} produce anche il segnale {\itshape Off}, asserito quando il gioco è spento, in uscita dal T Flip-Flop. In precedenza abbiamo constatato che questo segnale può essere utile per impostare a zero alcuni circuiti, come il contatore e il cronometro.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\columnwidth]{Immagini/"Controllo input"}
+\caption{{\small Il sistema di input è inattivo finché l'utente non decide di iniziare la partita con la pressione del bottone {\itshape On / off}.}}
+\label{fig:controlloinput}
+\end{figure}
+
+
+\subsection{Modifica input}
+
+Il circuito in figura \underline{\vref{fig:modificainput}} prende in ingresso i segnali prodotti da {\itshape Controllo input} e gestisce la propagazione degli stessi. 
+
+La domanda da porsi per comprendere la logica dietro {\itshape Modifica input} è: la pressione di quale bottone innesca il cambiamento di stato del LED in una certa posizione? Fermo restando che, data l'idea dietro il gioco, non vogliamo certamente che la luce in posizione {\itshape Out 9} venga accesa dal bottone {\itshape In 1}.
+
+Consideriamo brevemente ciascuna luce e i tasti che interagiscono con essa in questa implementazione:
+
+\begin{tabular}{|l|l|}
+\hline
+Etichetta del LED & Etichette dei bottoni \\
+\hline
+Out 1 & In 1, In 2, In 4 \\
+Out 2 & In 2, In 1, In 3, In 5 \\
+Out 3 & In 3, In 2, In 6 \\
+Out 4 & In 4, In 1, In 5, In 7 \\
+Out 5 & In 5, In 2, In 4, In 6, In 8 \\
+Out 6 & In 6, In 3, In 5, In 9 \\
+Out 7 & In 7, In 4, In 8 \\
+Out 8 & In 8, In 5, In 7, In 9 \\
+Out 9 & In 9, In 6, In 8 \\
+\hline
+\end{tabular}
+
+\hfill
+
+La colonna di OR sortisce poi l'effetto di propagazione desiderato, secondo la seguente formula (per semplicità ne consideriamo una sola, le altre sono analoghe):
+
+{\itshape if ((In 1 = 1) OR (In 2 = 1) OR (In 4 = 1)) then turn Out 1 on / off}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\columnwidth]{Immagini/"Modifica input"}
+\caption{{\small Scopo di questo circuito è di accendere / spegnere non solo la luce richiesta, ma anche quelle adiacenti ad essa.}}
+\label{fig:modificainput}
+\end{figure}
+\pagebreak
+
+
+\subsection{Inizio casuale}
+\label{sec:iniziocasuale}
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=1.0\columnwidth]{Immagini/"Inizio casuale"}
+\caption{{\small La pressione del bottone {\itshape On / off} causa l'accensione di alcuni LED in un pattern pseudo-casuale.}}
+\label{fig:iniziocasuale}
+\end{figure}
+
+L'unico input del circuito è costituito dal segnale {\itshape On / off}: questo pilota l'ingresso {\itshape Clock} del Random Generator principale da 9 bit, innescando la generazione di un numero diverso ogni volta che viene asserito. Uno Splitter separa poi l'uscita di tale componente, in modo da ottenere nove segnali da un bit: ciascuno di questi entra infine in nove Random Generators, che generano un numero casuale tra 0 e 1.
+
+Diversamente dagli altri circuiti che prendono in ingresso il segnale {\itshape On / off}, questo non lo memorizza in un T Flip-Flop: il motivo dietro tale scelta dipende dal fatto che {\itshape Inizio casuale} deve solo accendere qualche luce contestualmente all'inizio della partita, per poi passare immediatamente il controllo sul sistema di input all'utente. È possibile ottenere un risultato del genere in parte grazie al gestore del display, ma soprattutto mediante gli AND tra il segnale uscente dai Random Generators e {\itshape On / off}: così facendo, l'uscita del circuito viene praticamente disattivata in corrispondenza al keyup del tasto di accensione del gioco.
+
+Un'ulteriore output di {\itshape Inizio casuale} è il segnale di {\itshape Errore}, menzionato in sezione \underline{\vref{sec:ilcircuitoprincipale}}: si ottiene a partire dall'uscita dei Random Generators, collegate mediante un NOR.
+
+{\itshape if (!(R1 AND \dots AND R9)) then turn} Errore {\itshape on}, che per la legge di De Morgan diventa:
+
+{\itshape if (!R1 OR \dots OR !R9) then turn} Errore {\itshape on}
+
+
+\subsection{Selezione input}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\columnwidth]{Immagini/"Selezione input"}
+\caption{{\small Come illustra il nome, {\itshape Selezione input} si occupa di unificare l'uscita dei due circuiti precedenti: {\itshape Modifica input} e {\itshape Inizio casuale}.
+Per fare ciò, prende in ingresso i diciotto segnali provenienti da quest'ultimi e ne calcola l'OR per determinare quali LED dovranno essere illuminati.}}
+\label{fig:selezioneinput}
+\end{figure}
+
+\subsection{Display}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\columnwidth]{Immagini/"Display"}
+\caption{{\small Il circuito atto a gestire i LED che fanno parte del sistema di output, memorizzando quale di questi debba essere illuminato o meno.}}
+\label{fig:display}
+\end{figure}
+
+{\itshape Display} raccoglie infine i segnali in uscita da {\itshape Selezione input} in nove T Flip-Flop asincroni.
+
+Come accennato in sottosezione \underline{\vref{sec:iniziocasuale}}, questo componente aiuta anche nella coordinazione tra i Random Generators e il sistema di input che, almeno ad inizio partita, si alternano sul controllo dell'output finale: nell'istante in cui l'utente preme il tasto {\itshape On / off}, i T Flip-Flop memorizzano i segnali uscenti dai generatori casuali; nell'istante immediatamente successivo, com'è normale che sia, tali elementi ricordano ancora il loro stato ma si apprestano a cambiarlo in base al modo in cui l'utente decide di interagire con il circuito. Ciò non sarebbe stato possibile se in {\itshape Inizio casuale} l'uscita dei Random Generators non fosse in AND con il segnale di {\itshape On / off}, poiché il giocatore non avrebbe avuto modo di sovrascrivere il contenuto dei bistabili.
+
+{\itshape Display} ha anche bisogno del segnale {	\itshape Off}, per poter resettare i flip-flop, e di conseguenza disattivare i LED, quando il gioco viene spento.
+
+
+\subsection{Vittoria}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\columnwidth]{Immagini/"Vittoria"}
+\caption{{\small Implementazione del circuito che controlla il segnale {\itshape Vittoria}. Si tratta di un semplice NOR tra le etichette dei LED, il cui risultato è in AND con la negazione di {\itshape Off} e poi con quella di {\itshape Err}:
+{\itshape if (((!Out 1 OR \dots OR !Out 9) AND !Off) AND !ERR) then turn} Vittoria {\itshape on}.
+Per cui la vittoria viene segnalata soltanto quando tutte le luci sono state spente, il gioco è acceso e non si è verificato alcun errore.}}
+\label{fig:vittoria}
+\end{figure}
+
+
+\section{Considerazioni finali}
+\label{sec:considerazionifinali}
+
+In questa relazione ho mostrato come implementare in un circuito logico il gioco {\itshape Spegni le luci}.
+
+Per farlo, sono partito dalla memorizzazione asincrona dei segnali che gestiscono il display; poi mi sono concentrato sull'input dell'utente, in particolare su come organizzare il componente che si occupa di propagarlo, e sull'accensione casuale di LED che avviene ad inizio partita. Infine ho sistemato alcuni dettagli, come il segnale di {\itshape Vittoria} e il problema del doppio input, e realizzato un contatore e un cronometro per aumentare il livello di sfida.
+
+Dal punto di vista del problema che questo circuito rappresenta, sarebbe utile capire se esistono delle combinazioni iniziali che l'utente non può risolvere: una volta individuate si potrebbero segnalare mediante {\itshape Errore}, oppure modificando l'implementazione in modo da evitarle del tutto. Personalmente non sono stato in grado di capire se queste combinazioni esistessero o meno.
+
+Un altro aspetto interessante potrebbe essere l'aggiunta di un contatore complementare a quello delle mosse, che va alla rovescia: raggiunto lo zero, la partita termina con una sconfitta. 
+
+Un possibile numero da cui far partire il count-down potrebbe essere nove per i giocatori più arditi: sappiamo infatti che premere lo stesso tasto due volte è inutile, perché ogni LED torna allo stato iniziale; questo vale anche nel caso in cui la doppia pressione dello stesso tasto è intervallata da un tasto diverso. Consideriamo infatti quattro tipologie di luci: quella che non viene modificata né dal tasto \textbf {A} né dal tasto \textbf {B}; quella che viene modificata dal tasto \textbf {A} ma non dal tasto \textbf {B}; quella che viene modificata dal tasto {\textbf {B} ma non dal tasto \textbf {A}; quella che viene modificata sia dal tasto \textbf {A} che dal tasto {\textbf {B}. Alla pressione di \textbf {A}, \textbf {B}, \textbf {A} accade che: la prima tipologia resta allo stato iniziale; la seconda tipologia torna allo stato iniziale dopo aver premuto \textbf {A} la seconda volta; la terza tipologia cambia di stato un'unica volta premendo \textbf B}; la quarta tipologia cambia di stato tre volte e, poiché gli stati possibili sono due, ciò equivale a cambiare di stato una sola volta. In conclusione, la pressione di \textbf {A}, \textbf {B}, \textbf {A} è equivalente alla pressione del solo tasto \textbf {B}.
+
+È per questo motivo che, tecnicamente, dovrebbe essere possibile concludere qualsiasi partita, ammesso che sia possibile farlo, in massimo nove mosse.
+
+\end{document}

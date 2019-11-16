@@ -1,0 +1,13 @@
+\babel@toc {italian}{}
+\babel@toc {italian}{}
+\contentsline {section}{\numberline {1}Il circuito principale}{2}{section.1}
+\contentsline {subsection}{\numberline {1.1}Il contatore}{3}{subsection.1.1}
+\contentsline {subsection}{\numberline {1.2}Il cronometro}{4}{subsection.1.2}
+\contentsline {section}{\numberline {2}I componenti fondamentali}{5}{section.2}
+\contentsline {subsection}{\numberline {2.1}Controllo input}{5}{subsection.2.1}
+\contentsline {subsection}{\numberline {2.2}Modifica input}{6}{subsection.2.2}
+\contentsline {subsection}{\numberline {2.3}Inizio casuale}{8}{subsection.2.3}
+\contentsline {subsection}{\numberline {2.4}Selezione input}{9}{subsection.2.4}
+\contentsline {subsection}{\numberline {2.5}Display}{9}{subsection.2.5}
+\contentsline {subsection}{\numberline {2.6}Vittoria}{10}{subsection.2.6}
+\contentsline {section}{\numberline {3}Considerazioni finali}{10}{section.3}
